@@ -1,28 +1,14 @@
-import random
 import socket
+import random
+from aes import Aes  # Importation de la classe Aes
 
-from HmacMD5 import HmacMd5
-from aes import Aes
 
-class Server:
+class ServerAES:
     def __init__(self, mode):
-        self.mode = mode
-        self.sserveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.mode = mode  # mode est une instance de Aes
         self.on = True
-    def des(self):
-        self.sserveur.bind(('127.0.0.1', 54321))
-        self.sserveur.listen(1)
-        print(f"Waiting for client...")
-        (sclient, adclient) = self.sserveur.accept()
-        print(f"Talking on port {adclient[1]}")
-        data = sclient.recv((4096))
-        print(data)
-        data = self.mode.decrypt(data)
-        print(data)
-        #print(data.decode())
-        sclient.close()
-        self.sserveur.close()
-    def aes(self):
+
+    def run(self):
         p = 23  # Nombre premier (petit ici mais en général plus grand)
         g = 5  # Générateur
 
@@ -32,12 +18,15 @@ class Server:
 
         # Créer l'objet AES (initialement sans clé partagée)
         aes = Aes()
-        self.sserveur.bind(('127.0.0.1', 54321))
-        self.sserveur.listen(1)
+
+        # Créer la socket du serveur
+        sserveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sserveur.bind(('127.0.0.1', 54321))
+        sserveur.listen(1)
         print(f"Serveur en attente de connexion sur le port 54321...")
 
         # Accepter la connexion du client
-        (sclient, adclient) = self.sserveur.accept()
+        (sclient, adclient) = sserveur.accept()
         print(f"Connexion établie avec {adclient[0]} sur le port {adclient[1]}")
 
         # Envoi de la clé publique du serveur au client
@@ -66,29 +55,6 @@ class Server:
 
         # Fermer la connexion
         sclient.close()
-        self.sserveur.close()
+        sserveur.close()
 
         print("Fin de la communication.")
-
-    def hmacmd5(self,key_hmac):
-        self.sserveur.bind(('127.0.0.1', 54321))
-        self.sserveur.listen(1)
-        print(f"Waiting for client...")
-        (sclient, adclient) = self.sserveur.accept()
-        print(f"Talking on port {adclient[1]}")
-        message = sclient.recv(1024).decode()
-        hmac_value = sclient.recv(64).decode()
-        hmac_auth = HmacMd5(key_hmac)
-        print("HMAC reçu : " ,hmac_value )
-        if hmac_auth.verify_hmac(message, hmac_value):
-            print("HMAC Vérifié avec succès !")
-
-            print("Message reçu:", message)
-        else:
-            print("Échec de la vérification HMAC. Le message a été modifié.")
-
-        sclient.close()
-        self.sserveur.close()
-        print("Fin de la communication.")
-
-
