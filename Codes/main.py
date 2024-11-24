@@ -2,7 +2,6 @@ import random
 
 import des
 from server import Server
-from serverAES import ServerAES
 from aes import Aes
 from HmacMD5 import HmacMd5
 import hashlib
