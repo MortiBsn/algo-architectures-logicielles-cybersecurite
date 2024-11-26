@@ -1,5 +1,12 @@
 import random
 import socket
+import struct
+
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
 import des
 from HmacMD5 import HmacMd5
 from aes import Aes
@@ -56,6 +63,34 @@ class Client ():
         print("Message envoyé:", self.txt)
         print("HMAC envoyé:", hmac_value)
         self.sclient.close()
+
+    def receive_data_sha_rsa(self):
+        # Réception de la taille de chaque partie
+        public_pem_size = struct.unpack("I", self.sclient.recv(4))[0]
+        message_size = struct.unpack("I", self.sclient.recv(4))[0]
+        signature_size = struct.unpack("I", self.sclient.recv(4))[0]
+
+        # Réception des données
+        public_pem = self.sclient.recv(public_pem_size)
+        message = self.sclient.recv(message_size)
+        signature = self.sclient.recv(signature_size)
+
+        self.sclient.close()
+        # Charger la clé publique à partir du PEM
+        public_key = load_pem_public_key(public_pem)
+
+        # Vérification de la signature avec SHA-1
+        try:
+            public_key.verify(
+                signature,
+                message,
+                padding.PKCS1v15(),
+                hashes.SHA1()  # Vérification avec SHA-1
+            )
+            print("Signature valide : le message est authentique.")
+        except Exception as e:
+            print("Échec de la vérification de la signature :", e)
+
 
 
 

@@ -13,6 +13,7 @@ client.mode.encrypt(client.txt)
 print(client.txt)
 client.send_data()
 
+print("*"*100)
 
 # Waiting one second so no port prob
 time.sleep(1)
@@ -24,11 +25,20 @@ client2.send_data_aes()
 
 time.sleep(1)
 
+print("*"*100)
 
 client3 = Client(None)
 client3.connect()
 client3.txt = "I am the message hello world "
 client3.send_data_HmacMd5("ma_clé_secrète")
+
+
+time.sleep(1)
+print("*"*100)
+
+client4 = Client(None)
+client4.connect()
+client4.receive_data_sha_rsa()
 
 
 

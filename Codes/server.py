@@ -1,5 +1,11 @@
 import random
 import socket
+import struct
+
+from Crypto.Hash import SHA1
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from Crypto.Signature import pkcs1_15
 
 from HmacMD5 import HmacMd5
 from aes import Aes
@@ -90,5 +96,51 @@ class Server:
         sclient.close()
         self.sserveur.close()
         print("Fin de la communication.")
+
+
+    def sharsa(self):
+        # Génération des clés RSA
+
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048
+        )
+        # Exporter la clé publique au format PEM pour envoi
+
+        public_key = private_key.public_key()
+        public_pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+
+        message = "Voici un message signé par le serveur.".encode('utf-8')  # Encodage en bytes
+
+        # Signer le message avec SHA-1
+        signature = private_key.sign(
+            message,
+            padding.PKCS1v15(),
+            hashes.SHA1()  # Utilisation de SHA-1 pour la signature
+        )
+
+        self.sserveur.bind(('127.0.0.1', 54321))
+        self.sserveur.listen(1)
+        print("Serveur en attente d'une connexion...")
+
+        conn, addr = self.sserveur.accept()
+        print(f"Connexion établie avec {addr}")
+
+        conn.sendall(struct.pack("I", len(public_pem)))  # Taille de la clé publique
+        conn.sendall(struct.pack("I", len(message)))  # Taille du message
+        conn.sendall(struct.pack("I", len(signature)))  # Taille de la signature
+
+        conn.sendall(public_pem)  # Envoyer la clé publique
+        conn.sendall(message)  # Envoyer le message
+        conn.sendall(signature)  # Envoyer la signature
+
+        conn.close()
+        self.sserveur.close()
+
+
+
 
 

@@ -33,3 +33,8 @@ print("*"*100)
 print("HMAC-MD5")
 server3 = Server(None)
 server3.hmacmd5("ma_clé_secrète")
+
+print("*"*100)
+print("SHA1-RSA")
+server4= Server(None)
+server4.sharsa()
