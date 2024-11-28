@@ -1,11 +1,14 @@
 import random
 import socket
 import struct
-
-from Crypto.Hash import SHA1
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
 from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA1
 
 from HmacMD5 import HmacMd5
 from aes import Aes
@@ -16,7 +19,7 @@ class Server:
         self.sserveur = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.on = True
     def des(self):
-        self.sserveur.bind(('127.0.0.1', 54321))
+        self.sserveur.bind(('127.0.0.1', 12345))
         self.sserveur.listen(1)
         print(f"Waiting for client...")
         (sclient, adclient) = self.sserveur.accept()
@@ -38,9 +41,9 @@ class Server:
 
         # Créer l'objet AES (initialement sans clé partagée)
         aes = Aes()
-        self.sserveur.bind(('127.0.0.1', 54321))
+        self.sserveur.bind(('127.0.0.1', 12345))
         self.sserveur.listen(1)
-        print(f"Serveur en attente de connexion sur le port 54321...")
+        print(f"Serveur en attente de connexion sur le port 12345...")
 
         # Accepter la connexion du client
         (sclient, adclient) = self.sserveur.accept()
@@ -77,7 +80,7 @@ class Server:
         print("Fin de la communication.")
 
     def hmacmd5(self,key_hmac):
-        self.sserveur.bind(('127.0.0.1', 54321))
+        self.sserveur.bind(('127.0.0.1', 12345))
         self.sserveur.listen(1)
         print(f"Waiting for client...")
         (sclient, adclient) = self.sserveur.accept()
@@ -122,7 +125,7 @@ class Server:
             hashes.SHA1()  # Utilisation de SHA-1 pour la signature
         )
 
-        self.sserveur.bind(('127.0.0.1', 54321))
+        self.sserveur.bind(('127.0.0.1', 12345))
         self.sserveur.listen(1)
         print("Serveur en attente d'une connexion...")
 
@@ -139,6 +142,106 @@ class Server:
 
         conn.close()
         self.sserveur.close()
+
+
+    def rsa(self):
+        #Récupération clé
+        keystore_path = "keystore.p12"
+        keystore_password = b"mdp"  # Mot de passe du keystore
+
+        # Charger la clé privée, le certificat et les certificats CA depuis le keystore
+        with open(keystore_path, "rb") as keystore_file:
+            private_key, certificate, additional_certs = load_key_and_certificates(
+                keystore_file.read(),
+                password=keystore_password
+            )
+
+        self.sserveur.bind(('127.0.0.1', 12345))
+        self.sserveur.listen(1)
+        print(f"Serveur en attente de connexion sur le port 12345...")
+
+        # Accepter la connexion du client
+        (sclient, adclient) = self.sserveur.accept()
+        print(f"Connexion établie avec {adclient[0]} sur le port {adclient[1]}")
+        encrypted_message = sclient.recv(4096)
+        print(encrypted_message)
+        # Déchiffrement avec la clé privée extraite du keystore
+        decrypted_message = private_key.decrypt(
+            encrypted_message,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+        print("Message déchiffré :", decrypted_message.decode("utf-8"))
+
+        sclient.close()
+        self.sserveur.close()
+
+    def applifinal(self):
+        self.sserveur.bind(('127.0.0.1', 12345))
+        self.sserveur.listen(1)
+        print(f"Serveur en attente de connexion sur le port 12345...")
+
+        # Accepter la connexion du client
+        (sclient, adclient) = self.sserveur.accept()
+        print(f"Connexion établie avec {adclient[0]} sur le port {adclient[1]}")
+
+        # Recevoir la clé publique envoyée par le client
+        public_key_client_pem  = sclient.recv(4096)
+        print("Clé publique reçue :")
+        print(public_key_client_pem .decode())
+        public_key_client = serialization.load_pem_public_key(public_key_client_pem)
+
+        # Récupérer les clés du serveur
+        keystore_path = "keystore.p12"
+        keystore_password = b"mdp"  # Mot de passe du keystore
+        with open(keystore_path, "rb") as keystore_file:
+            private_key, certificate, additional_certs = load_key_and_certificates(
+                keystore_file.read(),
+                password=keystore_password
+            )
+        # récupération de la clé public du serv
+        public_key = certificate.public_key()
+        print(public_key)
+
+        # Sérialiser la clé publique en PEM (format lisible)
+        public_key_pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+
+        # envoie de la clé public au client
+        sclient.sendall(public_key_pem)
+
+        # Envoie du message coucou
+        message = "Coucou".encode("utf-8")
+        # Chiffrement avec la clé publique du client
+        encrypted_message = public_key_client.encrypt(
+            message,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        print("message chiffré : ")
+        print(encrypted_message)
+
+            # Signer le message avec SHA-1
+        signature = private_key.sign(
+            message,
+            padding.PKCS1v15(),
+            hashes.SHA1()  # Utilisation de SHA-1 pour la signature
+        )
+        #envoie des données
+        sclient.sendall(encrypted_message)
+        sclient.sendall(signature)
+        sclient.close()
+        self.sserveur.close()
+
 
 
 
