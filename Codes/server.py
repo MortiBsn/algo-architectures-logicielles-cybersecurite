@@ -180,5 +180,70 @@ class Server:
         sclient.close()
         self.sserveur.close()
 
+    def applifinal(self):
+        self.sserveur.bind(('127.0.0.1', 12345))
+        self.sserveur.listen(1)
+        print(f"Serveur en attente de connexion sur le port 12345...")
+
+        # Accepter la connexion du client
+        (sclient, adclient) = self.sserveur.accept()
+        print(f"Connexion établie avec {adclient[0]} sur le port {adclient[1]}")
+
+        # Recevoir la clé publique envoyée par le client
+        public_key_client_pem  = sclient.recv(4096)
+        print("Clé publique reçue :")
+        print(public_key_client_pem .decode())
+        public_key_client = serialization.load_pem_public_key(public_key_client_pem)
+
+        # Récupérer les clés du serveur
+        keystore_path = "keystore.p12"
+        keystore_password = b"mdp"  # Mot de passe du keystore
+        with open(keystore_path, "rb") as keystore_file:
+            private_key, certificate, additional_certs = load_key_and_certificates(
+                keystore_file.read(),
+                password=keystore_password
+            )
+        # récupération de la clé public du serv
+        public_key = certificate.public_key()
+        print(public_key)
+
+        # Sérialiser la clé publique en PEM (format lisible)
+        public_key_pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+
+        # envoie de la clé public au client
+        sclient.sendall(public_key_pem)
+
+        # Envoie du message coucou
+        message = "Coucou".encode("utf-8")
+        # Chiffrement avec la clé publique du client
+        encrypted_message = public_key_client.encrypt(
+            message,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        print("message chiffré : ")
+        print(encrypted_message)
+
+            # Signer le message avec SHA-1
+        signature = private_key.sign(
+            message,
+            padding.PKCS1v15(),
+            hashes.SHA1()  # Utilisation de SHA-1 pour la signature
+        )
+        #envoie des données
+        sclient.sendall(encrypted_message)
+        sclient.sendall(signature)
+        sclient.close()
+        self.sserveur.close()
+
+
+
+
 
 

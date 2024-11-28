@@ -6,6 +6,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
+
+
 
 import des
 from HmacMD5 import HmacMd5
@@ -126,6 +130,66 @@ class Client ():
             print("Le socket est fermé.")
 
         self.sclient.close()
+
+
+    def applifinal(self):
+        # Charger le fichier keystore.p12
+        keystore_path = "client_keystore.p12"
+        keystore_password = b"mdp"  # Mot de passe du keystore
+
+        # Charger la clé privée, le certificat et les certificats CA depuis le keystore
+        with open(keystore_path, "rb") as keystore_file:
+            private_key, certificate, additional_certs = load_key_and_certificates(
+                keystore_file.read(),
+                password=keystore_password
+            )
+        public_key = certificate.public_key()
+        print(public_key)
+        # Sérialiser la clé publique en PEM (format lisible)
+        public_key_pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        # envoi de la clé
+        self.sclient.sendall(public_key_pem)
+        # Recevoir la clé
+        server_public_key_pem = self.sclient.recv(4096)
+        print("Clé publique reçue :")
+        print(server_public_key_pem.decode())
+        server_public_key = serialization.load_pem_public_key(server_public_key_pem)
+
+        # Recevoir message + signature
+        encrypted_message = self.sclient.recv(1024)
+        print("message chiffré reçu : ")
+        print(encrypted_message)
+        signature = self.sclient.recv(1024)
+        # Déchiffrer le message avec la clé privée du client
+        decrypted_message = private_key.decrypt(
+            encrypted_message,
+            asym_padding.OAEP(
+                mgf=asym_padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        print("Message déchiffré :", decrypted_message.decode("utf-8"))
+
+        # Vérifier la signature avec la clé publique du serveur
+        try:
+            server_public_key.verify(
+                signature,
+                decrypted_message,
+                asym_padding.PKCS1v15(),
+                hashes.SHA1()
+            )
+            print("Signature vérifiée avec succès. Le message est authentique.")
+        except Exception as e:
+            print("La vérification de la signature a échoué :", str(e))
+
+        self.sclient.close()
+
+
+
 
 
 

@@ -43,3 +43,10 @@ print("*"*100)
 print("RSA")
 server5 = Server(None)
 server5.rsa()
+
+print("*"*100)
+print("Application final")
+server6 = Server(None)
+server6.applifinal()
+
+

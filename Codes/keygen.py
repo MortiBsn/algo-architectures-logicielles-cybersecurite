@@ -54,7 +54,7 @@ p12_data = serialize_key_and_certificates(
 )
 
 # 5. Sauvegarde dans un fichier keystore.p12
-with open("keystore.p12", "wb") as p12_file:
+with open("client_keystore.p12", "wb") as p12_file:
     p12_file.write(p12_data)
 
 print("Keystore PKCS12 généré : keystore.p12")

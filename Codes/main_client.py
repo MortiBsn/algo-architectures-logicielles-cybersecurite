@@ -2,6 +2,8 @@ from client import Client
 import des
 from aes import Aes
 import time
+from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
+
 from HmacMD5 import HmacMd5
 
 
@@ -48,3 +50,10 @@ print("*"*100)
 client5 = Client(None)
 client5.connect()
 client5.rsa()
+
+time.sleep(1)
+print("*"*100)
+print("Application qui vérifie • Confidentialité • Intégrité • Authentification • Non-répudiation")
+client6 = Client(None)
+client6.connect()
+client6.applifinal()
