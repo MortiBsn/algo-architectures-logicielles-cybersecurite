@@ -36,5 +36,10 @@ server3.hmacmd5("ma_clé_secrète")
 
 print("*"*100)
 print("SHA1-RSA")
-server4= Server(None)
+server4 = Server(None)
 server4.sharsa()
+
+print("*"*100)
+print("RSA")
+server5 = Server(None)
+server5.rsa()

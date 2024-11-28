@@ -42,5 +42,9 @@ client4.receive_data_sha_rsa()
 
 
 
+time.sleep(1)
+print("*"*100)
 
-# connection
+client5 = Client(None)
+client5.connect()
+client5.rsa()

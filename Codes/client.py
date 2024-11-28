@@ -4,8 +4,8 @@ import struct
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
-
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
 
 import des
 from HmacMD5 import HmacMd5
@@ -17,7 +17,7 @@ class Client ():
         self.txt = ""
 
     def connect(self):
-        self.sclient.connect(('127.0.0.1',54321))
+        self.sclient.connect(('127.0.0.1',12345))
         print(f"Serveur @IP = {self.sclient.getpeername()[0]}")
         print(f"Port = {self.sclient.getpeername()[1]}")
         print(f"Port used = {self.sclient.getsockname()[1]}")
@@ -90,6 +90,45 @@ class Client ():
             print("Signature valide : le message est authentique.")
         except Exception as e:
             print("Échec de la vérification de la signature :", e)
+
+
+    def rsa(self):
+        # Charger le fichier keystore.p12
+        keystore_path = "keystore.p12"
+        keystore_password = b"mdp"  # Mot de passe du keystore
+
+        # Charger la clé privée, le certificat et les certificats CA depuis le keystore
+        with open(keystore_path, "rb") as keystore_file:
+            private_key, certificate, additional_certs = load_key_and_certificates(
+                keystore_file.read(),
+                password=keystore_password
+            )
+
+        # Afficher le certificat et la clé privée pour vérifier
+        print("Certificat chargé :", certificate)
+        print("Clé privée chargée :", private_key)
+        # Message à chiffrer
+        message = "Bonjour je suis un message drole".encode("utf-8")
+        print(message)
+        # Chiffrement avec la clé publique extraite du certificat
+        encrypted_message = certificate.public_key().encrypt(
+            message,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+        print("Message chiffré :", encrypted_message)
+        if self.sclient.fileno() != -1:  # Vérifie si le socket est toujours ouvert
+            self.sclient.sendall(encrypted_message)
+        else:
+            print("Le socket est fermé.")
+
+        self.sclient.close()
+
+
+
 
 
 
