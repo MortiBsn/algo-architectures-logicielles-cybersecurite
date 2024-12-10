@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page d'Accueil</title>
+</head>
+<body>
+    <h1>Bienvenue sur le site de location de vacances</h1>
+    
+    {% if not session.get('username') %}
+    <p>Pour réserver une location, vous devez être connecté.</p>
+    <p><a href="{{ url_for('login') }}">Se connecter</a> ou <a href="{{ url_for('register') }}">S'inscrire</a></p>
+    {% else %}
+    <h2>Nos Propositions de Location</h2>
+    <ul>
+        <li><a href="{{ url_for('payment') }}">Location 1</a></li>
+        <li><a href="{{ url_for('payment') }}">Location 2</a></li>
+        <li><a href="{{ url_for('payment') }}">Location 3</a></li>
+    </ul>
+    {% endif %}
+</body>
+</html>
