@@ -4,6 +4,7 @@ from certificates.library import load_key_and_cert_from_keystore, load_ca_from_t
 from cryptography.hazmat.primitives import serialization
 import tempfile
 
+PORT_AUTH = 8443
 
 def start_acs_server():
     # Charger la clé et le certificat depuis le keystore PKCS#12 pour ACS
@@ -40,7 +41,7 @@ def start_acs_server():
     context.verify_mode = ssl.CERT_REQUIRED  # Demande un certificat client
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(('0.0.0.0', 8443))
+        sock.bind(('0.0.0.0', PORT_AUTH))
         sock.listen(5)
 
         print("ACS Server démarré, en attente de connexions...")
