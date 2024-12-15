@@ -8,8 +8,10 @@
 <body>
     <h1>Paiement pour la location</h1>
     <p>Vous êtes sur le point de réserver. Veuillez cliquer sur le bouton ci-dessous pour finaliser le paiement.</p>
-    <label for="code">Code : </label>
-    <input name="code" type="text" required/>
-    <button>Payer</button>
+    <form method="post">
+        <label for="code">Code : </label>
+        <input name="code" type="text" required/>
+        <button type="submit">Payer</button>
+    </form>
 </body>
 </html>

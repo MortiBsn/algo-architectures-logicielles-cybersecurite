@@ -5,13 +5,11 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 from cryptolib import load_private_key, sign_message, verify_signature, load_public_key
-from acs import PORT_AUTH # Port to connect to
 from datetime import date
+from ports import PORT_AUTH
 
 # Server address
 HOST = '127.0.0.1'  # Localhost
-
-
 
 def start_secure_client():
     # Create a standard TCP socket

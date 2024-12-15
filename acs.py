@@ -2,14 +2,23 @@ import socket
 import ssl
 from cryptolib import load_public_key, verify_signature, sign_message, load_private_key
 import random
+import threading
+import time
+from ports import PORT_AUTH, PORT_MONEY, PORT_RESPONSE
 
 # Server settings
 HOST = '127.0.0.1'  # Localhost
-PORT_AUTH = 12345     # Port to listen on
+
+
 
 # Paths to SSL certificate and key files
 CERT_FILE = 'acs.cer'
 KEY_FILE = 'acs.key'
+
+codes = []
+context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+context.load_cert_chain('certificates/acs.cer', 'certificates/acs.key')
+context.load_verify_locations('certificates/myCA.cer')
 
 def generate_authentification_code():
     code = ""
@@ -39,9 +48,6 @@ def luhn_check(card_number):
 
 def start_secure_server():
     # Create a standard TCP socket
-    context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-    context.load_cert_chain('certificates/acs.cer', 'certificates/acs.key')
-    context.load_verify_locations('certificates/myCA.cer')
     
     client_public_key = load_public_key("certificates/client.pub")
     serverPrivateKey = load_private_key("certificates/acs.key")
@@ -69,6 +75,9 @@ def start_secure_server():
                             if(luhn_check(cardNumber)):
                                 print("The card number is valid")
                                 generatedCode = generate_authentification_code()
+                                while generatedCode in codes:
+                                    generatedCode = generate_authentification_code()
+                                codes.append(generatedCode)
                                 print(f"Token generated : {generatedCode}")
                                 serverSignature = sign_message(serverPrivateKey, generatedCode)
                                 client_socket.sendall(generatedCode.encode('utf-8') + b'||' + serverSignature)
@@ -82,5 +91,36 @@ def start_secure_server():
             finally:
                 ssock.close()
 
+def waitACQResponse():
+    print("Thread started")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
+        sock.bind((HOST, PORT_MONEY))
+        sock.listen(5)
+        with context.wrap_socket(sock, server_side=True) as ssock:
+            while True:
+                client_socket, addr = ssock.accept()
+                message = ""
+
+                code = client_socket.recv(1024)
+                code = code.decode('utf-8')
+                if code in codes:
+                    message = "ACK"
+                    codes.remove(code)
+                else:
+                    message = "NACK"
+                
+                sendResponseToWebServer(message)
+                client_socket.close()
+
+def sendResponseToWebServer(response):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
+        with context.wrap_socket(sock, server_hostname=HOST) as client_socket:
+            client_socket.connect((HOST, PORT_RESPONSE))
+            client_socket.sendall(response.encode('utf-8'))
+            print("Response sent to web server")
+            client_socket.close()
+
 if __name__ == "__main__":
+    thread = threading.Thread(target=waitACQResponse)
+    thread.start()
     start_secure_server()

@@ -1,8 +1,42 @@
+import ssl
+import socket
 from flask import Flask, request, render_template, redirect, url_for, session
 from auth import add_user, verify_user
+from ports import PORT_VERIFICATION, PORT_RESPONSE
 app = Flask(__name__)
 
 app.secret_key = 'secret_key'
+HOST = "127.0.0.1"
+
+
+context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+context.load_cert_chain('certificates/web.cer', 'certificates/web.key')
+context.load_verify_locations('certificates/myCA.cer')
+
+def isCodeVerified(code):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
+        with context.wrap_socket(sock, server_hostname=HOST) as client_socket:
+            # Connect to the server
+            client_socket.connect((HOST, PORT_VERIFICATION))
+            client_socket.sendall(code.encode('utf-8'))
+            client_socket.close()
+    response = getACSResponse()
+    print(f"Response : {response}")
+    if(response == "ACK"):
+        return True
+    return False
+        
+def getACSResponse():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as sock:
+        sock.bind((HOST, PORT_RESPONSE))
+        sock.listen(5)
+        with context.wrap_socket(sock, server_side=True) as ssock:
+            client_socket, addr = ssock.accept()
+            response = client_socket.recv(1024)
+            response = response.decode('utf-8')
+            client_socket.close()
+
+            return response
 
 @app.route('/')
 def home():
@@ -33,10 +67,18 @@ def login():
             return "Identifiants incorrects!", 401
     return render_template('login.html')
 
-@app.route('/payment')
+@app.route('/payment', methods=['GET', 'POST'])
 def payment():
     if 'username' not in session:
         return redirect(url_for('login'))
+    if request.method == "POST":
+        code = request.form['code']
+        verified = isCodeVerified(code)
+        if(verified):
+            return render_template('valid.html')
+        else:
+            return render_template('invalid.html')
+
 
     return render_template('payment.html')
 
